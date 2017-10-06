@@ -11,6 +11,9 @@ module ActiveRecord::Base::NearestNeighbor::Scopes
     # If we have an object id, don't include the object in results
     not_id_subclause = params[:id] ? "id != #{params[:id]}" : ''
 
+    select("#{self.table_name}.*, ST_Distance(
+      #{table_name}.location,
+      ST_GeographyFromText('SRID=4326;POINT(#{longitude} #{latitude})')::geometry as distance").
     where(%{ST_DWithin(#{table_name}.location, ST_GeographyFromText('SRID=4326;POINT(#{longitude} #{latitude})')::geometry, #{distance})}).
       where(not_id_subclause).
     order(%{ST_Distance(
@@ -35,13 +38,13 @@ module ActiveRecord::Base::NearestNeighbor::Scopes
             #{table_name}.location::geometry <->
             ST_GeographyFromText('SRID=4326;POINT(#{longitude} #{latitude})')::geometry
         )
-        SELECT *
-        FROM closest_candidates
-        ORDER BY
-          ST_Distance(
+        SELECT *, ST_Distance(
             closest_candidates.location,
             ST_GeographyFromText('SRID=4326;POINT(#{longitude} #{latitude})')::geometry
-          )
+          ) as distance
+        FROM closest_candidates
+        ORDER BY
+          distance
         LIMIT #{limit};} 
     )
   end
